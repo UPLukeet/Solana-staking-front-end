@@ -1,8 +1,7 @@
 import { FC, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-
-import { SolanaLogo } from "components";
+import { useWalletNfts } from "@nfteyez/sol-rayz-react";
 import styles from "./index.module.css";
 import { FARM_PUBLICKEY, initGemFarm } from "utils/gem-farm";
 import baseWallet, { SignerWalletAdapter } from "@solana/wallet-adapter-base";
@@ -26,7 +25,12 @@ export const HomeView: FC = ({}) => {
   const [farmerAcc, setFarmerAcc] = useState<any>();
   const [farmerState, setFarmerState] = useState<string>();
   const [availableRewards, setAvailableRewards] = useState();
+  const { nfts, isLoading, error } = useWalletNfts({
+    publicAddress: publicKey,
+    connection,
+  });
 
+  console.log(nfts);
   useEffect(() => {
     if (publicKey && connection) {
       (async () => {
