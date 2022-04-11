@@ -23,7 +23,7 @@ yarn run dev
 
 Set up your farm using the farm manager below.
 https://www.gemfarm.gg/manager
-Make sure reward A is your chosen reward if you only want one reward type pass this as reward B So11111111111111111111111111111111111111112.
+Make sure reward A is your chosen reward if you only want one reward type pass this as reward B `So11111111111111111111111111111111111111112`.
 
 To add your farm to the Next.js front-end simply create a .env file at the root of the project.
-Add a variable inside the file called NEXT_PUBLIC_FARM_PUBLICKEY=YOUR_GEMFARM_PUBLICKEY_GOES_HERE.
+Add a variable inside the file called `NEXT_PUBLIC_FARM_PUBLICKEY=YOUR_GEMFARM_PUBLICKEY_GOES_HERE`.
