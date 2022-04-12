@@ -1,7 +1,7 @@
 import { FC, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useWalletNfts, WalletResult } from "@nfteyez/sol-rayz-react";
+import { useWalletNfts } from "@nfteyez/sol-rayz-react";
 import styles from "./index.module.css";
 import { FARM_PUBLICKEY, initGemFarm } from "utils/gem-farm";
 import baseWallet, { SignerWalletAdapter } from "@solana/wallet-adapter-base";
@@ -9,6 +9,8 @@ import { PublicKey } from "@solana/web3.js";
 import { findFarmerPDA, stringifyPKsAndBNs } from "@gemworks/gem-farm-ts";
 import { Loader } from "components";
 import { whiteList } from "../../../white-list";
+import { NftCard } from "components/NftCard";
+import { getNftMetaData } from "utils/getNftMetaData";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
@@ -24,9 +26,7 @@ export const HomeView: FC = ({}) => {
   });
 
   const [gf, setGf] = useState<any>();
-  const whiteListNfts = isLoadingNfts
-    ? []
-    : nfts.filter((nft: any) => whiteList.includes(nft.mint));
+  const [whiteListNfts, setWhiteListNfts] = useState([]);
   const farm = FARM_PUBLICKEY;
 
   const [farmAcc, setFarmAcc] = useState<any>();
@@ -61,6 +61,15 @@ export const HomeView: FC = ({}) => {
       })();
     }
   }, [gf]);
+
+  useEffect(() => {
+    (async () => {
+      const nftMetaData = await nfts
+        .filter((nft: any) => whiteList.includes(nft.mint))
+        .map(async (nft: any) => await getNftMetaData(nft.data.uri));
+      setWhiteListNfts(await Promise.all(nftMetaData));
+    })();
+  }, [nfts]);
 
   const initFarmer = async () => {
     await gf.initFarmerWallet(new PublicKey(farm));
@@ -121,7 +130,11 @@ export const HomeView: FC = ({}) => {
                       <Loader />
                     ) : (
                       whiteListNfts?.map((nft: any) => (
-                        <p key={nft.mint}>{nft.mint}</p>
+                        <NftCard
+                          key={nft.mint}
+                          name={nft.name}
+                          img={nft.image}
+                        />
                       ))
                     )}
                   </div>
