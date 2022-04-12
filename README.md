@@ -27,3 +27,5 @@ Make sure reward A is your chosen reward if you only want one reward type pass t
 
 To add your farm to the Next.js front-end simply create a .env file at the root of the project.
 Add a variable inside the file called `NEXT_PUBLIC_FARM_PUBLICKEY=YOUR_GEMFARM_PUBLICKEY_GOES_HERE`.
+
+If you have have a white list setup for your farm replace the contents of `white-list.ts` with your desired mints.
