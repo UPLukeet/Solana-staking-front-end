@@ -1,12 +1,14 @@
 import { FC, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useWalletNfts } from "@nfteyez/sol-rayz-react";
+import { useWalletNfts, WalletResult } from "@nfteyez/sol-rayz-react";
 import styles from "./index.module.css";
 import { FARM_PUBLICKEY, initGemFarm } from "utils/gem-farm";
 import baseWallet, { SignerWalletAdapter } from "@solana/wallet-adapter-base";
 import { PublicKey } from "@solana/web3.js";
 import { findFarmerPDA, stringifyPKsAndBNs } from "@gemworks/gem-farm-ts";
+import { Loader } from "components";
+import { whiteList } from "../../../white-list";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
@@ -16,27 +18,30 @@ export const HomeView: FC = ({}) => {
     sendTransaction,
     signTransaction,
   } as SignerWalletAdapter;
+  const { nfts, isLoadingNfts, error } = useWalletNfts({
+    publicAddress: publicKey,
+    connection,
+  });
 
   const [gf, setGf] = useState<any>();
-
+  const whiteListNfts = isLoadingNfts
+    ? []
+    : nfts.filter((nft: any) => whiteList.includes(nft.mint));
   const farm = FARM_PUBLICKEY;
+
   const [farmAcc, setFarmAcc] = useState<any>();
   const [farmerIdentity, setFarmerIdentity] = useState<string>();
   const [farmerAcc, setFarmerAcc] = useState<any>();
   const [farmerState, setFarmerState] = useState<string>();
   const [availableRewards, setAvailableRewards] = useState();
-  const { nfts, isLoading, error } = useWalletNfts({
-    publicAddress: publicKey,
-    connection,
-  });
 
-  console.log(nfts);
   useEffect(() => {
     if (publicKey && connection) {
       (async () => {
         try {
-          setGf(await initGemFarm(connection, wallet));
-          console.log("farm init success", gf);
+          const gfResponse = await initGemFarm(connection, wallet);
+          setGf(gfResponse);
+          console.log("farm init success", gfResponse);
         } catch (err) {
           console.error(err);
         }
@@ -63,8 +68,9 @@ export const HomeView: FC = ({}) => {
   };
 
   const fetchFarm = async () => {
-    setFarmAcc(await gf.fetchFarmAcc(new PublicKey(farm)));
-    console.log(`farm found at ${farm}:`, stringifyPKsAndBNs(farmAcc));
+    const farmAccResponse = await gf.fetchFarmAcc(new PublicKey(farm));
+    setFarmAcc(farmAccResponse);
+    console.log(`farm found at ${farm}:`, stringifyPKsAndBNs(farmAccResponse));
   };
 
   const fetchFarmer = async () => {
@@ -73,15 +79,17 @@ export const HomeView: FC = ({}) => {
       publicKey as PublicKey
     );
     setFarmerIdentity(publicKey?.toBase58());
-    const farmer = await gf.fetchFarmerAcc(farmerPDA);
-    setFarmerAcc(farmer);
-    setFarmerState(gf.parseFarmerState(farmer));
+    const farmerAccResponse = await gf.fetchFarmerAcc(farmerPDA);
+    setFarmerAcc(farmerAccResponse);
+    setFarmerState(gf.parseFarmerState(farmerAccResponse));
     setAvailableRewards(
-      farmer.rewardA.accruedReward.sub(farmer.rewardA.paidOutReward).toString()
+      farmerAccResponse.rewardA.accruedReward
+        .sub(farmerAccResponse.rewardA.paidOutReward)
+        .toString()
     );
     console.log(
       `farmer found at ${farmerIdentity}:`,
-      stringifyPKsAndBNs(farmer)
+      stringifyPKsAndBNs(farmerAccResponse)
     );
   };
 
@@ -107,7 +115,16 @@ export const HomeView: FC = ({}) => {
             <div className="text-center hero-content">
               <div className="max-w-lg">
                 {farmerAcc ? (
-                  <div> account found</div>
+                  <div>
+                    <p>account found</p>
+                    {isLoadingNfts ? (
+                      <Loader />
+                    ) : (
+                      whiteListNfts?.map((nft: any) => (
+                        <p key={nft.mint}>{nft.mint}</p>
+                      ))
+                    )}
+                  </div>
                 ) : (
                   publicKey && (
                     <div>
