@@ -1,16 +1,18 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWalletNfts } from "@nfteyez/sol-rayz-react";
 import styles from "./index.module.css";
 import { FARM_PUBLICKEY, initGemFarm } from "utils/gem-farm";
-import baseWallet, { SignerWalletAdapter } from "@solana/wallet-adapter-base";
+import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
 import { PublicKey } from "@solana/web3.js";
 import { findFarmerPDA, stringifyPKsAndBNs } from "@gemworks/gem-farm-ts";
 import { Loader } from "components";
 import { whiteList } from "../../../white-list";
 import { NftCard } from "components/NftCard";
 import { getNftMetaData } from "utils/getNftMetaData";
+import { initGemBank } from "utils/gem-bank";
+import { BN } from "@project-serum/anchor";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction, autoConnect } =
@@ -27,9 +29,16 @@ export const HomeView: FC = ({}) => {
   });
 
   const [gf, setGf] = useState<any>();
+  const [gb, setGb] = useState<any>();
+
   const [whiteListNfts, setWhiteListNfts] = useState([]);
   const [selectedNfts, setSelectedNfts] = useState<any[]>([]);
   const farm = FARM_PUBLICKEY;
+
+  const [vault, setVault] = useState();
+  const [vaultAcc, setVaultAcc] = useState();
+  const [bank, setBank] = useState();
+  const [isBankLocked, setIsBankLocked] = useState();
 
   const [farmAcc, setFarmAcc] = useState<any>();
   const [farmerIdentity, setFarmerIdentity] = useState<string>();
@@ -42,7 +51,9 @@ export const HomeView: FC = ({}) => {
       (async () => {
         try {
           const gfResponse = await initGemFarm(connection, wallet);
+          const gbResponse = await initGemBank(connection, wallet);
           setGf(gfResponse);
+          setGb(gbResponse);
           console.log("farm init success", gfResponse);
         } catch (err) {
           console.error(err);
@@ -52,7 +63,7 @@ export const HomeView: FC = ({}) => {
   }, [publicKey, connection]);
 
   useEffect(() => {
-    if (gf) {
+    if (gf && gb) {
       (async () => {
         try {
           await fetchFarm();
@@ -62,46 +73,110 @@ export const HomeView: FC = ({}) => {
         }
       })();
     }
-  }, [gf]);
+  }, [gf, gb]);
+
+  useEffect(() => {
+    if (vault)
+      (async () => {
+        await updateVaultState();
+      })();
+  }, [vault]);
 
   useEffect(() => {
     (async () => {
-      const nftMetaData = await nfts
-        .filter((nft: any) => whiteList.includes(nft.mint))
-        .map(async (nft: any) => await getNftMetaData(nft.mint, nft.data.uri));
-      setWhiteListNfts(await Promise.all(nftMetaData));
+      try {
+        const nftMetaData = await nfts
+          .filter((nft: any) => whiteList.includes(nft.mint))
+          .map(
+            async (nft: any) => await getNftMetaData(nft.mint, nft.data.uri)
+          );
+        setWhiteListNfts(await Promise.all(nftMetaData));
+      } catch (err) {
+        console.error(err);
+      }
     })();
   }, [nfts]);
 
   const initFarmer = async () => {
-    await gf.initFarmerWallet(new PublicKey(farm));
-    await fetchFarmer();
+    try {
+      await gf.initFarmerWallet(new PublicKey(farm));
+      await fetchFarmer();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchFarm = async () => {
-    const farmAccResponse = await gf.fetchFarmAcc(new PublicKey(farm));
-    setFarmAcc(farmAccResponse);
-    console.log(`farm found at ${farm}:`, stringifyPKsAndBNs(farmAccResponse));
+    try {
+      const farmAccResponse = await gf.fetchFarmAcc(new PublicKey(farm));
+      setFarmAcc(farmAccResponse);
+      console.log(
+        `farm found at ${farm}:`,
+        stringifyPKsAndBNs(farmAccResponse)
+      );
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchFarmer = async () => {
-    const [farmerPDA] = await findFarmerPDA(
-      new PublicKey(farm),
-      publicKey as PublicKey
-    );
-    setFarmerIdentity(publicKey?.toBase58());
-    const farmerAccResponse = await gf.fetchFarmerAcc(farmerPDA);
-    setFarmerAcc(farmerAccResponse);
-    setFarmerState(gf.parseFarmerState(farmerAccResponse));
-    setAvailableRewards(
-      farmerAccResponse.rewardA.accruedReward
-        .sub(farmerAccResponse.rewardA.paidOutReward)
-        .toString()
-    );
-    console.log(
-      `farmer found at ${farmerIdentity}:`,
-      stringifyPKsAndBNs(farmerAccResponse)
-    );
+    try {
+      const [farmerPDA] = await findFarmerPDA(
+        new PublicKey(farm),
+        publicKey as PublicKey
+      );
+      setFarmerIdentity(publicKey?.toBase58());
+      const farmerAccResponse = await gf.fetchFarmerAcc(farmerPDA);
+      setFarmerAcc(farmerAccResponse);
+      setVault(farmerAccResponse.vault);
+      setFarmerState(gf.parseFarmerState(farmerAccResponse));
+      setAvailableRewards(
+        farmerAccResponse.rewardA.accruedReward
+          .sub(farmerAccResponse.rewardA.paidOutReward)
+          .toString()
+      );
+      console.log(`farmer found :`, stringifyPKsAndBNs(farmerAccResponse));
+    } catch (err) {
+      console.error(console.error(err));
+    }
+  };
+
+  const updateVaultState = async () => {
+    try {
+      console.log("getting vault", vault);
+      const vaultAccResponse = await gb.fetchVaultAcc(vault);
+      setVaultAcc(vaultAccResponse);
+      console.log("found vault :", vaultAccResponse);
+      setBank(vaultAccResponse.bank);
+      setIsBankLocked(vaultAccResponse.locked);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const stakeGems = async () => {
+    try {
+      selectedNfts.map(async (nft) => {
+        const selectedNft: any = whiteListNfts.find(
+          (whiteListedNft: any) => whiteListedNft.mint === nft
+        );
+
+        const creator = selectedNft.properties.creators[0].address;
+        const source = creator;
+        if (!selectedNft) return;
+        const { txSig } = await gb.depositGemWallet(
+          bank,
+          vault,
+          new BN(1),
+          new PublicKey(selectedNft.mint),
+          source,
+          creator
+        );
+        console.log("deposit done", txSig);
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const updateSelectedNfts = (mint: string) => {
@@ -113,6 +188,8 @@ export const HomeView: FC = ({}) => {
       setSelectedNfts((prev) => [...prev, mint]);
     }
   };
+
+  console.log(whiteListNfts);
 
   return (
     <div className="container mx-auto max-w-6xl p-8 2xl:px-0">
@@ -151,6 +228,11 @@ export const HomeView: FC = ({}) => {
                           />
                         ))}
                       </ul>
+                    )}
+                    {selectedNfts.length > 0 && (
+                      <button onClick={stakeGems} className="btn btn-ghost">
+                        Stake
+                      </button>
                     )}
                   </div>
                 ) : (
