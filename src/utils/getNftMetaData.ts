@@ -1,5 +1,5 @@
-export const getNftMetaData = async (uri: string) => {
+export const getNftMetaData = async (mint: string, uri: string) => {
   const response = await fetch(uri);
-
-  return await response.json();
+  const nftMetaData = await response.json();
+  return { mint, ...nftMetaData };
 };

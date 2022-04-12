@@ -1,13 +1,22 @@
+import { MintLayout } from "@solana/spl-token";
+
 interface NftCardProps {
-  name: string;
-  img: string;
+  metaData: any;
+  isSelected?: boolean;
+  onClick?: (mint: string) => void;
 }
 
-export const NftCard = ({ name, img }: NftCardProps) => {
+export const NftCard = ({ metaData, isSelected, onClick }: NftCardProps) => {
+  const { name, image, mint } = metaData;
   return (
-    <div className="flex flex-col radius-m">
+    <li
+      onClick={() => onClick && onClick(mint)}
+      className={`flex flex-col radius-m cursor-pointer ${
+        isSelected && "bg-blue-500"
+      }`}
+    >
+      <img src={image} className="h-100 w-100 flex-1" />
       <p>{name}</p>
-      <img src={img} className="h-100 w-100 flex-1" />
-    </div>
+    </li>
   );
 };

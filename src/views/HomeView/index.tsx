@@ -13,7 +13,8 @@ import { NftCard } from "components/NftCard";
 import { getNftMetaData } from "utils/getNftMetaData";
 
 export const HomeView: FC = ({}) => {
-  const { publicKey, sendTransaction, signTransaction } = useWallet();
+  const { publicKey, sendTransaction, signTransaction, autoConnect } =
+    useWallet();
   const { connection } = useConnection();
   const wallet = {
     publicKey,
@@ -27,6 +28,7 @@ export const HomeView: FC = ({}) => {
 
   const [gf, setGf] = useState<any>();
   const [whiteListNfts, setWhiteListNfts] = useState([]);
+  const [selectedNfts, setSelectedNfts] = useState<any[]>([]);
   const farm = FARM_PUBLICKEY;
 
   const [farmAcc, setFarmAcc] = useState<any>();
@@ -66,7 +68,7 @@ export const HomeView: FC = ({}) => {
     (async () => {
       const nftMetaData = await nfts
         .filter((nft: any) => whiteList.includes(nft.mint))
-        .map(async (nft: any) => await getNftMetaData(nft.data.uri));
+        .map(async (nft: any) => await getNftMetaData(nft.mint, nft.data.uri));
       setWhiteListNfts(await Promise.all(nftMetaData));
     })();
   }, [nfts]);
@@ -102,6 +104,16 @@ export const HomeView: FC = ({}) => {
     );
   };
 
+  const updateSelectedNfts = (mint: string) => {
+    console.log(mint);
+    if (selectedNfts.includes(mint)) {
+      const updatedArray = selectedNfts.filter((nft) => nft !== mint);
+      setSelectedNfts(updatedArray);
+    } else {
+      setSelectedNfts((prev) => [...prev, mint]);
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-6xl p-8 2xl:px-0">
       <div className={styles.container}>
@@ -125,23 +137,26 @@ export const HomeView: FC = ({}) => {
               <div className="max-w-lg">
                 {farmerAcc ? (
                   <div>
-                    <p>account found</p>
+                    <p>Send your Bapes into the jungle to mine for OOGIE!</p>
                     {isLoadingNfts ? (
                       <Loader />
                     ) : (
-                      whiteListNfts?.map((nft: any) => (
-                        <NftCard
-                          key={nft.mint}
-                          name={nft.name}
-                          img={nft.image}
-                        />
-                      ))
+                      <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
+                        {whiteListNfts?.map((nft: any) => (
+                          <NftCard
+                            onClick={(mint) => updateSelectedNfts(mint)}
+                            isSelected={selectedNfts.includes(nft.mint)}
+                            key={nft.mint}
+                            metaData={nft}
+                          />
+                        ))}
+                      </ul>
                     )}
                   </div>
                 ) : (
                   publicKey && (
                     <div>
-                      <p>No account found</p>{" "}
+                      <p>No account found</p>
                       <button onClick={initFarmer} className="btn btn-ghost">
                         Begin staking
                       </button>
