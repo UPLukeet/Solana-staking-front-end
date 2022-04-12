@@ -157,18 +157,26 @@ export const HomeView: FC = ({}) => {
   const stakeGems = async () => {
     try {
       selectedNfts.map(async (nft) => {
-        const selectedNft: any = whiteListNfts.find(
+        const selectedNft: any = nfts.find(
           (whiteListedNft: any) => whiteListedNft.mint === nft
         );
+        const mint = new PublicKey(selectedNft.mint);
 
-        const creator = selectedNft.properties.creators[0].address;
-        const source = creator;
+        const creator = new PublicKey(selectedNft.data.creators[0].address);
+        const programAccount = await connection.getTokenAccountsByOwner(
+          publicKey as PublicKey,
+          {
+            mint,
+          }
+        );
+        const source = programAccount.value[0].pubkey;
+
         if (!selectedNft) return;
         const { txSig } = await gb.depositGemWallet(
           bank,
           vault,
           new BN(1),
-          new PublicKey(selectedNft.mint),
+          mint,
           source,
           creator
         );
@@ -189,7 +197,7 @@ export const HomeView: FC = ({}) => {
     }
   };
 
-  console.log(whiteListNfts);
+  console.log(nfts);
 
   return (
     <div className="container mx-auto max-w-6xl p-8 2xl:px-0">

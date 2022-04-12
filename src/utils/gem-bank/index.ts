@@ -1,13 +1,13 @@
-import { BN, Idl } from '@project-serum/anchor';
+import { BN, Idl } from "@project-serum/anchor";
 import {
   findWhitelistProofPDA,
   GEM_BANK_PROG_ID,
   GemBankClient,
   WhitelistType,
-} from '@gemworks/gem-farm-ts';
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
-import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
-import { NodeWallet, programs } from '@metaplex/js';
+} from "@gemworks/gem-farm-ts";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
+import { NodeWallet, programs } from "@metaplex/js";
 
 //when we only want to view vaults, no need to connect a real wallet.
 export function createFakeWallet() {
@@ -28,7 +28,7 @@ export async function initGemBank(
   wallet?: SignerWalletAdapter
 ) {
   const walletToUse = wallet ?? createFakeWallet();
-  const idl = await (await fetch('gem_bank.json')).json();
+  const idl = await (await fetch("gem_bank.json")).json();
   return new GemBank(conn, walletToUse as any, idl);
 }
 
@@ -53,7 +53,7 @@ export class GemBank extends GemBankClient {
       this.wallet.publicKey,
       this.wallet.publicKey,
       this.wallet.publicKey,
-      'test_vault'
+      "test_vault"
     );
   }
 
@@ -73,6 +73,14 @@ export class GemBank extends GemBankClient {
     gemSource: PublicKey,
     creator: PublicKey
   ) {
+    console.log(
+      bank.toBase58(),
+      vault.toBase58(),
+      gemAmount,
+      gemMint.toBase58(),
+      gemSource.toBase58(),
+      creator.toBase58()
+    );
     const [mintProof, bump] = await findWhitelistProofPDA(bank, gemMint);
     const [creatorProof, bump2] = await findWhitelistProofPDA(bank, creator);
     const metadata = await programs.metadata.Metadata.getPDA(gemMint);
