@@ -13,6 +13,7 @@ import { NftCard } from "components/NftCard";
 import { getNftMetaData } from "utils/getNftMetaData";
 import { initGemBank } from "utils/gem-bank";
 import { BN } from "@project-serum/anchor";
+import { getNFTMetadataForMany, INFT } from "utils/web3/NFTget";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction, autoConnect } =
@@ -32,6 +33,7 @@ export const HomeView: FC = ({}) => {
   const [gb, setGb] = useState<any>();
 
   const [whiteListNfts, setWhiteListNfts] = useState([]);
+  const [vaultNfts, setVaultNfts] = useState<INFT[]>([]);
   const [selectedNfts, setSelectedNfts] = useState<any[]>([]);
   const farm = FARM_PUBLICKEY;
 
@@ -85,17 +87,31 @@ export const HomeView: FC = ({}) => {
   useEffect(() => {
     (async () => {
       try {
-        const nftMetaData = await nfts
-          .filter((nft: any) => whiteList.includes(nft.mint))
-          .map(
-            async (nft: any) => await getNftMetaData(nft.mint, nft.data.uri)
-          );
-        setWhiteListNfts(await Promise.all(nftMetaData));
+        if (vault && nfts) {
+          const nftMetaData = await nfts
+            .filter((nft: any) => whiteList.includes(nft.mint))
+            .map(
+              async (nft: any) => await getNftMetaData(nft.mint, nft.data.uri)
+            );
+          setWhiteListNfts(await Promise.all(nftMetaData));
+          const foundGDRs = await gb.fetchAllGdrPDAs(vault);
+          if (foundGDRs && foundGDRs.length > 0) {
+            const mints = foundGDRs.map((gdr: any) => {
+              return { mint: gdr.account.gemMint };
+            });
+            const vaultNftMetaData = await getNFTMetadataForMany(
+              mints,
+              connection
+            );
+            console.log("nft", await Promise.all(vaultNftMetaData));
+            setVaultNfts(await Promise.all(vaultNftMetaData));
+          }
+        }
       } catch (err) {
         console.error(err);
       }
     })();
-  }, [nfts]);
+  }, [nfts, vault]);
 
   const initFarmer = async () => {
     try {
@@ -155,36 +171,45 @@ export const HomeView: FC = ({}) => {
   };
 
   const stakeGems = async () => {
-    try {
+    await Promise.all(
       selectedNfts.map(async (nft) => {
-        const selectedNft: any = nfts.find(
-          (whiteListedNft: any) => whiteListedNft.mint === nft
-        );
-        const mint = new PublicKey(selectedNft.mint);
+        try {
+          const selectedNft: any = nfts.find(
+            (whiteListedNft: any) => whiteListedNft.mint === nft
+          );
+          if (!selectedNft) return;
+          const mint = new PublicKey(selectedNft.mint);
 
-        const creator = new PublicKey(selectedNft.data.creators[0].address);
-        const programAccount = await connection.getTokenAccountsByOwner(
-          publicKey as PublicKey,
-          {
+          const creator = new PublicKey(selectedNft.data.creators[0].address);
+          const programAccount = await connection.getTokenAccountsByOwner(
+            publicKey as PublicKey,
+            {
+              mint,
+            }
+          );
+          const source = programAccount.value[0].pubkey;
+
+          const { txSig } = await gf.flashDepositWallet(
+            new PublicKey(farm),
+            "1",
             mint,
-          }
-        );
-        const source = programAccount.value[0].pubkey;
+            source,
+            creator
+          );
+          console.log("deposit done", txSig);
+          updateSelectedNfts(nft);
+        } catch (err) {
+          console.error(err);
+        }
+      })
+    );
+    await gf.stakeWallet(new PublicKey(farm));
+    fetchFarmer();
+  };
 
-        if (!selectedNft) return;
-        const { txSig } = await gb.depositGemWallet(
-          bank,
-          vault,
-          new BN(1),
-          mint,
-          source,
-          creator
-        );
-        console.log("deposit done", txSig);
-      });
-    } catch (err) {
-      console.error(err);
-    }
+  const endStaking = async () => {
+    await gf.unstakeWallet(new PublicKey(farm));
+    await fetchFarmer();
   };
 
   const updateSelectedNfts = (mint: string) => {
@@ -239,8 +264,31 @@ export const HomeView: FC = ({}) => {
                     )}
                     {selectedNfts.length > 0 && (
                       <button onClick={stakeGems} className="btn btn-ghost">
-                        Stake
+                        Stake NFT
                       </button>
+                    )}
+
+                    {farmerState === "staked" && (
+                      <>
+                        <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
+                          {vaultNfts?.map((nft: any) => (
+                            <NftCard
+                              onClick={(mint) => updateSelectedNfts(mint)}
+                              isSelected={selectedNfts.includes(
+                                nft.mint.toBase58()
+                              )}
+                              key={nft.mint.toBase58()}
+                              metaData={{
+                                ...nft.externalMetadata,
+                                mint: nft.mint.toBase58(),
+                              }}
+                            />
+                          ))}
+                        </ul>
+                        <button onClick={endStaking} className="btn btn-ghost">
+                          End Staking
+                        </button>
+                      </>
                     )}
                   </div>
                 ) : (

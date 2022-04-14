@@ -261,7 +261,7 @@ export class GemFarm extends GemFarmClient {
   }
 
   async unstakeWallet(farm: PublicKey) {
-    const result = await this.unstake(farm, this.wallet.publicKey);
+    const result = await this.unstake(farm, this.wallet.publicKey, false);
 
     console.log("ended staking for farmer", this.wallet.publicKey.toBase58());
 

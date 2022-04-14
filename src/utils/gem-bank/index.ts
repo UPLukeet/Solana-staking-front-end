@@ -4,6 +4,11 @@ import {
   GEM_BANK_PROG_ID,
   GemBankClient,
   WhitelistType,
+  findGemBoxPDA,
+  findGdrPDA,
+  findVaultAuthorityPDA,
+  findRarityPDA,
+  isKp,
 } from "@gemworks/gem-farm-ts";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
@@ -73,14 +78,6 @@ export class GemBank extends GemBankClient {
     gemSource: PublicKey,
     creator: PublicKey
   ) {
-    console.log(
-      bank.toBase58(),
-      vault.toBase58(),
-      gemAmount,
-      gemMint.toBase58(),
-      gemSource.toBase58(),
-      creator.toBase58()
-    );
     const [mintProof, bump] = await findWhitelistProofPDA(bank, gemMint);
     const [creatorProof, bump2] = await findWhitelistProofPDA(bank, creator);
     const metadata = await programs.metadata.Metadata.getPDA(gemMint);
