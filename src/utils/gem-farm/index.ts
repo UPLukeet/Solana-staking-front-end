@@ -1,6 +1,6 @@
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
-import { BN, Idl } from "@project-serum/anchor";
+import { BN, Idl, web3 } from "@project-serum/anchor";
 
 import {
   GemFarmClient,
@@ -11,8 +11,15 @@ import {
   findWhitelistProofPDA,
   GEM_FARM_PROG_ID,
   GEM_BANK_PROG_ID,
+  findFarmerPDA,
+  findFarmAuthorityPDA,
+  findVaultAuthorityPDA,
+  findGemBoxPDA,
+  findRarityPDA,
+  findGdrPDA,
 } from "@gemworks/gem-farm-ts";
 import { programs } from "@metaplex/js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const FARM_PUBLICKEY = process.env.NEXT_PUBLIC_FARM_PUBLICKEY as string;
 
@@ -258,6 +265,91 @@ export class GemFarm extends GemFarmClient {
     console.log("begun staking for farmer", this.wallet.publicKey.toBase58());
 
     return result;
+  }
+
+  async stakeMultipleNfts(
+    bank: any,
+    vault: any,
+    mints: { mint: PublicKey; gemSource: PublicKey; creator: PublicKey }[]
+  ) {
+    const trxInstructions = [];
+
+    const [vaultAuth, vaultAuthBump] = await findVaultAuthorityPDA(vault);
+
+    for (const nft of mints) {
+      const gemMint = nft.mint;
+      const gemSource = nft.gemSource;
+      const creator = nft.creator;
+      const [gemBox, gemBoxBump] = await findGemBoxPDA(vault, gemMint);
+      const [gemRarity, gemRarityBump] = await findRarityPDA(bank, gemMint);
+      const [GDR] = await findGdrPDA(vault, gemMint);
+      const [mintProof, bump] = await findWhitelistProofPDA(bank, gemMint);
+      const [creatorProof, bump2] = await findWhitelistProofPDA(bank, creator);
+      const metadata = await programs.metadata.Metadata.getPDA(gemMint);
+      const remainingAccounts = [];
+      if (mintProof)
+        remainingAccounts.push({
+          pubkey: mintProof,
+          isWritable: false,
+          isSigner: false,
+        });
+      if (metadata)
+        remainingAccounts.push({
+          pubkey: metadata,
+          isWritable: false,
+          isSigner: false,
+        });
+      if (creatorProof)
+        remainingAccounts.push({
+          pubkey: creatorProof,
+          isWritable: false,
+          isSigner: false,
+        });
+      const depositTrans = this.bankProgram.instruction.depositGem(
+        vaultAuthBump,
+        gemRarityBump,
+        new BN(1),
+        {
+          accounts: {
+            bank,
+            vault,
+            owner: this.wallet.publicKey,
+            authority: vaultAuth,
+            gemBox,
+            gemDepositReceipt: GDR,
+            gemSource,
+            gemMint,
+            gemRarity,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: web3.SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          },
+          remainingAccounts,
+          signers: [this.wallet.publicKey] as any,
+        }
+      );
+      trxInstructions.push(depositTrans);
+    }
+
+    // const stakeInst = this.farmProgram.instruction.stake(
+    //   farmAuthBump,
+    //   farmerBump,
+    //   {
+    //     accounts: {
+    //       farm,
+    //       farmer,
+    //       identity: this.wallet.publicKey,
+    //       bank,
+    //       vault,
+    //       farmAuthority: farmAuth,
+    //       gemBank: this.bankProgram.programId,
+    //     },
+    //     signers: [this.wallet.publicKey] as any[],
+    //   }
+    // );
+    // trxInstructions.push(stakeInst);
+
+    return new Transaction().add(...trxInstructions);
   }
 
   async unstakeWallet(farm: PublicKey) {
