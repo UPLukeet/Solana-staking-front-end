@@ -268,7 +268,7 @@ export const HomeView: FC = ({}) => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-8 2xl:px-0">
+    <div className="container mx-auto max-w-6xl p-8 h-full">
       <div className={styles.container}>
         <div className="navbar mb-2 shadow-lg bg-neutral text-neutral-content rounded-box">
           <div className="flex-none">
@@ -284,88 +284,108 @@ export const HomeView: FC = ({}) => {
           </div>
         </div>
 
-        <div className="text-center pt-2">
-          <div className="hero min-h-16 py-4">
-            <div className="text-center hero-content">
-              <div className="max-w-lg">
-                {farmerAcc ? (
-                  <div>
-                    <p>Send your Bapes into the jungle to mine for OOGIE!</p>
+        <div className="h-full">
+          {farmerAcc ? (
+            <div className="h-full">
+              <div className="flex w-full h-full justify-between">
+                <ul className="grid grid-cols-2 gap-8 sm:grid-cols-3 mt-4 p-5">
+                  {whiteListNfts?.map((nft) => (
+                    <NftCard
+                      onClick={(mint) => updateSelectedNfts(mint)}
+                      isSelected={selectedNfts?.includes(nft?.mint?.toBase58())}
+                      key={nft?.mint?.toBase58()}
+                      metaData={nft}
+                    />
+                  ))}
+                </ul>
+                <div className="flex flex-col p-5 m-auto">
+                  <button
+                    disabled={
+                      !whiteListNfts.find((nft) =>
+                        selectedNfts.includes(nft.mint.toBase58())
+                      )
+                    }
+                    onClick={() => moveGems(true)}
+                    className="btn btn-ghost mb-5"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="black"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
 
-                    <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                      {whiteListNfts?.map((nft) => (
-                        <NftCard
-                          onClick={(mint) => updateSelectedNfts(mint)}
-                          isSelected={selectedNfts?.includes(
-                            nft?.mint?.toBase58()
-                          )}
-                          key={nft?.mint?.toBase58()}
-                          metaData={nft}
-                        />
-                      ))}
-                    </ul>
-                    <div className="flex">
-                      {whiteListNfts.find((nft) =>
-                        selectedNfts.includes(nft.mint.toBase58())
-                      ) && (
-                        <button
-                          onClick={() => moveGems(true)}
-                          className="btn btn-ghost"
-                        >
-                          Move in
-                        </button>
-                      )}
-                      {vaultNfts.find((nft) =>
-                        selectedNfts.includes(nft.mint.toBase58())
-                      ) &&
-                        farmerState === "unstaked" && (
-                          <button
-                            onClick={() => moveGems(false)}
-                            className="btn btn-ghost"
-                          >
-                            Move out
-                          </button>
-                        )}
-                      {vaultNfts.length > 0 && farmerState === "unstaked" && (
-                        <button onClick={stakeGems}>Stake NFTs</button>
-                      )}
-                    </div>
-                    <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                      {vaultNfts?.map((nft) => (
-                        <NftCard
-                          onClick={(mint) => updateSelectedNfts(mint)}
-                          isSelected={selectedNfts?.includes(
-                            nft?.mint?.toBase58()
-                          )}
-                          key={nft?.mint?.toBase58()}
-                          metaData={nft}
-                        />
-                      ))}
-                    </ul>
-                    {(farmerState === "staked" ||
-                      farmerState === "pendingCooldown") && (
-                      <>
-                        <button onClick={endStaking} className="btn btn-ghost">
-                          {farmerState === "staked"
-                            ? "End Staking"
-                            : "End cooldown"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  publicKey && (
-                    <div>
-                      <p>No account found</p>
-                      <button onClick={initFarmer} className="btn btn-ghost">
-                        Begin staking
-                      </button>
-                    </div>
-                  )
+                  <button
+                    disabled={
+                      !(
+                        vaultNfts.find((nft) =>
+                          selectedNfts.includes(nft.mint.toBase58())
+                        ) && farmerState === "unstaked"
+                      )
+                    }
+                    onClick={() => moveGems(false)}
+                    className="btn btn-ghost"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="black"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <ul className="grid grid-cols-2 gap-8 sm:grid-cols-3 mt-4 p-5">
+                  {vaultNfts?.map((nft) => (
+                    <NftCard
+                      onClick={(mint) => updateSelectedNfts(mint)}
+                      isSelected={selectedNfts?.includes(nft?.mint?.toBase58())}
+                      key={nft?.mint?.toBase58()}
+                      metaData={nft}
+                    />
+                  ))}
+                </ul>
+              </div>
+              <div className="flex mx-auto">
+                {(farmerState === "staked" ||
+                  farmerState === "pendingCooldown") && (
+                  <>
+                    <button onClick={endStaking} className="btn btn-ghost">
+                      End Staking
+                    </button>
+                  </>
+                )}
+                {vaultNfts.length > 0 && farmerState === "unstaked" && (
+                  <button onClick={stakeGems}>Stake NFTs</button>
                 )}
               </div>
             </div>
-          </div>
+          ) : (
+            publicKey && (
+              <div>
+                <p>No account found</p>
+                <button onClick={initFarmer} className="btn btn-ghost">
+                  Begin staking
+                </button>
+              </div>
+            )
+          )}
         </div>
       </div>
     </div>

@@ -12,12 +12,12 @@ export const NftCard = ({ metaData, isSelected, onClick }: NftCardProps) => {
   return (
     <li
       onClick={() => onClick && onClick(mint.toBase58())}
-      className={`flex flex-col radius-m cursor-pointer ${
-        isSelected && "bg-blue-500"
+      className={`flex flex-col rounded-md cursor-pointer shadow-lg text-neutral-content p-2 ${
+        isSelected ? "bg-blue-500" : "bg-neutral"
       }`}
     >
       <img src={externalMetadata?.image} className="h-100 w-100 flex-1" />
-      <p>{externalMetadata?.name}</p>
+      <p className="p-2">{externalMetadata?.name}</p>
     </li>
   );
 };
