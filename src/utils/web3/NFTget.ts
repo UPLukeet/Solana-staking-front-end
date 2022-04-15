@@ -1,7 +1,7 @@
-import { Connection, PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import axios from 'axios';
-import { programs } from '@metaplex/js';
+import { Connection, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import axios from "axios";
+import { programs } from "@metaplex/js";
 
 const {
   metadata: { Metadata },
@@ -10,8 +10,8 @@ const {
 export interface INFT {
   pubkey?: PublicKey;
   mint: PublicKey;
-  onchainMetadata: unknown;
-  externalMetadata: unknown;
+  onchainMetadata: any;
+  externalMetadata: any;
 }
 
 async function getTokensByOwner(owner: PublicKey, conn: Connection) {
@@ -30,7 +30,7 @@ async function getTokensByOwner(owner: PublicKey, conn: Connection) {
     });
 }
 
-async function getNFTMetadata(
+export async function getNFTMetadata(
   mint: string,
   conn: Connection,
   pubkey?: string
