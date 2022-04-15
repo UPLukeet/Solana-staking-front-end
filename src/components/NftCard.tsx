@@ -16,8 +16,8 @@ export const NftCard = ({ metaData, isSelected, onClick }: NftCardProps) => {
         isSelected && "bg-blue-500"
       }`}
     >
-      <img src={externalMetadata.image} className="h-100 w-100 flex-1" />
-      <p>{externalMetadata.name}</p>
+      <img src={externalMetadata?.image} className="h-100 w-100 flex-1" />
+      <p>{externalMetadata?.name}</p>
     </li>
   );
 };

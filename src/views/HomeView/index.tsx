@@ -165,30 +165,43 @@ export const HomeView: FC = ({}) => {
   };
 
   const moveGems = async (intoVault: boolean) => {
+    let newWhiteList = whiteListNfts;
+    let newVault = vaultNfts;
     if (intoVault) {
       for (const nft of selectedNfts) {
         if (vaultNfts.find((vaultNft) => vaultNft.mint === nft)) return;
 
-        const selectedNft: any = whiteListNfts.find(
-          (whiteListedNft: any) => whiteListedNft.mint === nft
+        const selectedNft = whiteListNfts.find(
+          (whiteListedNft: INFT) => whiteListedNft.mint.toBase58() === nft
         );
-        const mint = new PublicKey(selectedNft.mint);
-        const creator = new PublicKey(selectedNft.data.creators[0].address);
+        if (!selectedNft) return;
+
+        const creator = new PublicKey(
+          selectedNft?.onchainMetadata.data.creators[0].address
+        );
         const programAccount = await connection.getTokenAccountsByOwner(
           publicKey as PublicKey,
           {
-            mint,
+            mint: selectedNft.mint,
           }
         );
         const gemSource = programAccount.value[0].pubkey;
+
         await gb.depositGemWallet(
           bank,
           vault,
           new BN(1),
-          nft,
+          new PublicKey(nft),
           gemSource,
           creator
         );
+        newWhiteList = newWhiteList.filter(
+          (nftToRemove) => nftToRemove.mint.toBase58() !== nft
+        );
+        newVault = [...newVault, selectedNft];
+
+        setVaultNfts(newVault);
+        setWhiteListNfts(newWhiteList);
         updateSelectedNfts(nft);
       }
     } else {
@@ -200,12 +213,18 @@ export const HomeView: FC = ({}) => {
         const mint = new PublicKey(nft);
         await gb.withdrawGemWallet(bank, vault, new BN(1), mint);
 
-        const nftData = await getNFTMetadataForMany(
-          [{ mint: mint }],
-          connection
+        const selectedNft = vaultNfts.find(
+          (vaulNft) => vaulNft.mint.toBase58() === nft
         );
-        console.log(nftData);
+        if (!selectedNft) return;
 
+        newVault = newVault.filter(
+          (nftToRemove) => nftToRemove.mint.toBase58() !== nft
+        );
+        newWhiteList = [...newWhiteList, selectedNft];
+
+        setVaultNfts(newVault);
+        setWhiteListNfts(newWhiteList);
         updateSelectedNfts(nft);
       }
     }
@@ -220,7 +239,7 @@ export const HomeView: FC = ({}) => {
         if (!selectedNft) return;
         const mint = new PublicKey(selectedNft.mint);
         const creator = new PublicKey(
-          selectedNft?.onchainMetadata?.data.creators[0].address
+          selectedNft.onchainMetadata.data.creators[0].address
         );
         const programAccount = await connection.getTokenAccountsByOwner(
           publicKey as PublicKey,
@@ -255,15 +274,12 @@ export const HomeView: FC = ({}) => {
 
   const updateSelectedNfts = (mint: string) => {
     if (selectedNfts.includes(mint)) {
-      const updatedArray = selectedNfts.filter((nft) => nft !== mint);
-      setSelectedNfts(updatedArray);
+      setSelectedNfts((prev) => prev.filter((nft) => nft !== mint));
     } else {
       setSelectedNfts((prev) => [...prev, mint]);
     }
   };
 
-  console.log(whiteListNfts);
-  console.log(vaultNfts);
   return (
     <div className="container mx-auto max-w-6xl p-8 2xl:px-0">
       <div className={styles.container}>
@@ -288,21 +304,22 @@ export const HomeView: FC = ({}) => {
                 {farmerAcc ? (
                   <div>
                     <p>Send your Bapes into the jungle to mine for OOGIE!</p>
-                    {
-                      <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                        {whiteListNfts?.map((nft: INFT) => (
-                          <NftCard
-                            onClick={(mint) => updateSelectedNfts(mint)}
-                            isSelected={selectedNfts.includes(
-                              nft.mint.toBase58()
-                            )}
-                            key={nft.mint.toBase58() as string}
-                            metaData={nft}
-                          />
-                        ))}
-                      </ul>
-                    }
-                    {selectedNfts.length > 0 && (
+
+                    <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
+                      {whiteListNfts?.map((nft) => (
+                        <NftCard
+                          onClick={(mint) => updateSelectedNfts(mint)}
+                          isSelected={selectedNfts?.includes(
+                            nft?.mint?.toBase58()
+                          )}
+                          key={nft?.mint?.toBase58()}
+                          metaData={nft}
+                        />
+                      ))}
+                    </ul>
+                    {whiteListNfts.find((nft) =>
+                      selectedNfts.includes(nft.mint.toBase58())
+                    ) && (
                       <button
                         onClick={() => moveGems(true)}
                         className="btn btn-ghost"
@@ -310,23 +327,26 @@ export const HomeView: FC = ({}) => {
                         Move in
                       </button>
                     )}
-                    {vaultNfts.length > 0 && farmerState === "unstaked" && (
-                      <button
-                        onClick={() => moveGems(false)}
-                        className="btn btn-ghost"
-                      >
-                        Move out
-                      </button>
-                    )}
+                    {vaultNfts.find((nft) =>
+                      selectedNfts.includes(nft.mint.toBase58())
+                    ) &&
+                      farmerState === "unstaked" && (
+                        <button
+                          onClick={() => moveGems(false)}
+                          className="btn btn-ghost"
+                        >
+                          Move out
+                        </button>
+                      )}
 
                     <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
-                      {vaultNfts?.map((nft: any) => (
+                      {vaultNfts?.map((nft) => (
                         <NftCard
                           onClick={(mint) => updateSelectedNfts(mint)}
-                          isSelected={selectedNfts.includes(
-                            nft.mint.toBase58()
+                          isSelected={selectedNfts?.includes(
+                            nft?.mint?.toBase58()
                           )}
-                          key={nft.mint.toBase58()}
+                          key={nft?.mint?.toBase58()}
                           metaData={nft}
                         />
                       ))}
