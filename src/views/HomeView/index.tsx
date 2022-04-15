@@ -1,21 +1,20 @@
-import { FC, useEffect, useMemo, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import styles from "./index.module.css";
 import { FARM_PUBLICKEY, initGemFarm } from "utils/gem-farm";
 import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { findFarmerPDA, stringifyPKsAndBNs } from "@gemworks/gem-farm-ts";
-import { Loader } from "components";
-import { whiteList } from "../../../white-list";
 import { NftCard } from "components/NftCard";
-import { getNftMetaData } from "utils/getNftMetaData";
 import { initGemBank } from "utils/gem-bank";
 import { BN } from "@project-serum/anchor";
 import { getNFTMetadataForMany, getNFTsByOwner, INFT } from "utils/web3/NFTget";
+import { useTransaction } from "utils/web3/sendTransactionConfirmed";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
+  const { sendTransactionConfirmed } = useTransaction();
   const { connection } = useConnection();
   const wallet = {
     publicKey,
@@ -231,43 +230,31 @@ export const HomeView: FC = ({}) => {
   };
 
   const stakeGems = async () => {
-    const mints = await Promise.all(
-      selectedNfts.map(async (nft) => {
-        const selectedNft = whiteListNfts.find(
-          (whiteListedNft: INFT) => whiteListedNft.mint === nft
-        );
-        if (!selectedNft) return;
-        const mint = new PublicKey(selectedNft.mint);
-        const creator = new PublicKey(
-          selectedNft.onchainMetadata.data.creators[0].address
-        );
-        const programAccount = await connection.getTokenAccountsByOwner(
-          publicKey as PublicKey,
-          {
-            mint,
-          }
-        );
-        const gemSource = programAccount.value[0].pubkey;
-
-        return { mint, gemSource, creator };
-      })
-    );
-
-    const tsx = await gf.stakeMultipleNfts(bank, vault, mints);
-
-    console.log(publicKey);
-    const result = await sendTransaction(tsx, connection);
+    const tsx = await gf.stakeNfts(bank, vault, new PublicKey(farm));
+    const result = await sendTransactionConfirmed(tsx, connection);
 
     console.log("deposited ", result);
-    await gf.stakeWallet(new PublicKey(farm));
     await fetchFarmer();
   };
 
   const endStaking = async () => {
-    await gf.unstakeWallet(new PublicKey(farm));
+    let newWhiteList = whiteListNfts;
+    let newVault = vaultNfts;
+    const tsx = await gf.unstakeNfts(bank, vault, new PublicKey(farm));
+    const result = await sendTransactionConfirmed(tsx, connection);
+
+    console.log("unstaked ", result);
 
     for (const nft of vaultNfts) {
       await gb.withdrawGemWallet(bank, vault, new BN(1), nft.mint);
+
+      newVault = newVault.filter(
+        (nftToRemove) => nftToRemove.mint.toBase58() !== nft.mint.toBase58()
+      );
+      newWhiteList = [...newWhiteList, nft];
+
+      setVaultNfts(newVault);
+      setWhiteListNfts(newWhiteList);
     }
     await fetchFarmer();
   };
@@ -317,28 +304,32 @@ export const HomeView: FC = ({}) => {
                         />
                       ))}
                     </ul>
-                    {whiteListNfts.find((nft) =>
-                      selectedNfts.includes(nft.mint.toBase58())
-                    ) && (
-                      <button
-                        onClick={() => moveGems(true)}
-                        className="btn btn-ghost"
-                      >
-                        Move in
-                      </button>
-                    )}
-                    {vaultNfts.find((nft) =>
-                      selectedNfts.includes(nft.mint.toBase58())
-                    ) &&
-                      farmerState === "unstaked" && (
+                    <div className="flex">
+                      {whiteListNfts.find((nft) =>
+                        selectedNfts.includes(nft.mint.toBase58())
+                      ) && (
                         <button
-                          onClick={() => moveGems(false)}
+                          onClick={() => moveGems(true)}
                           className="btn btn-ghost"
                         >
-                          Move out
+                          Move in
                         </button>
                       )}
-
+                      {vaultNfts.find((nft) =>
+                        selectedNfts.includes(nft.mint.toBase58())
+                      ) &&
+                        farmerState === "unstaked" && (
+                          <button
+                            onClick={() => moveGems(false)}
+                            className="btn btn-ghost"
+                          >
+                            Move out
+                          </button>
+                        )}
+                      {vaultNfts.length > 0 && farmerState === "unstaked" && (
+                        <button onClick={stakeGems}>Stake NFTs</button>
+                      )}
+                    </div>
                     <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 mt-4">
                       {vaultNfts?.map((nft) => (
                         <NftCard
