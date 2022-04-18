@@ -11,6 +11,9 @@ import { initGemBank } from "utils/gem-bank";
 import { BN } from "@project-serum/anchor";
 import { getNFTMetadataForMany, getNFTsByOwner, INFT } from "utils/web3/NFTget";
 import { useTransaction } from "utils/web3/sendTransactionConfirmed";
+import { FarmInfo } from "components/FarmInfo";
+import { NftGrid } from "components/NftGrid";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/solid";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
@@ -268,7 +271,7 @@ export const HomeView: FC = ({}) => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-8 h-full">
+    <div className="container mx-auto max-w-6xl p-3 h-full">
       <div className={styles.container}>
         <div className="navbar mb-2 shadow-lg bg-neutral text-neutral-content rounded-box">
           <div className="flex-none">
@@ -276,19 +279,19 @@ export const HomeView: FC = ({}) => {
               <span className="text-4xl">🦤</span>
             </button>
           </div>
-          <div className="flex-1 px-2 mx-2">
+          <div className="flex-1 px-2 mx-2 hidden">
             <span className="text-lg font-bold">Caw Caw</span>
           </div>
-          <div className="flex-none">
+          <div className="flex-none ml-auto">
             <WalletMultiButton className="btn btn-ghost" />
           </div>
         </div>
 
-        <div className="h-full">
+        <div className="h-full mt-6">
           {farmerAcc ? (
             <div className="h-full">
-              <div className="flex w-full h-full justify-between">
-                <ul className="grid grid-cols-2 gap-8 sm:grid-cols-3 mt-4 p-5">
+              <div className="flex flex-col w-full h-full justify-between">
+                <NftGrid>
                   {whiteListNfts?.map((nft) => (
                     <NftCard
                       onClick={(mint) => updateSelectedNfts(mint)}
@@ -297,8 +300,8 @@ export const HomeView: FC = ({}) => {
                       metaData={nft}
                     />
                   ))}
-                </ul>
-                <div className="flex flex-col p-5 m-auto">
+                </NftGrid>
+                <div className="flex p-3 m-auto">
                   <button
                     disabled={
                       !whiteListNfts.find((nft) =>
@@ -306,22 +309,9 @@ export const HomeView: FC = ({}) => {
                       )
                     }
                     onClick={() => moveGems(true)}
-                    className="btn btn-ghost mb-5"
+                    className="btn btn-ghost m-2"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="black"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
+                    <ChevronDownIcon className="text-black w-6 h-6" />
                   </button>
 
                   <button
@@ -329,52 +319,34 @@ export const HomeView: FC = ({}) => {
                       !(
                         vaultNfts.find((nft) =>
                           selectedNfts.includes(nft.mint.toBase58())
-                        ) && farmerState === "unstaked"
+                        ) && farmerState === "Unstaked"
                       )
                     }
                     onClick={() => moveGems(false)}
-                    className="btn btn-ghost"
+                    className="btn btn-ghost m-2"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="black"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
+                    <ChevronUpIcon className="text-black w-6 h-6" />
                   </button>
                 </div>
-                <ul className="grid grid-cols-2 gap-8 sm:grid-cols-3 mt-4 p-5">
+                <NftGrid isStaked={farmerState === "staked"} heading="Staked">
                   {vaultNfts?.map((nft) => (
                     <NftCard
+                      disabled={farmerState === "staked"}
                       onClick={(mint) => updateSelectedNfts(mint)}
                       isSelected={selectedNfts?.includes(nft?.mint?.toBase58())}
                       key={nft?.mint?.toBase58()}
                       metaData={nft}
                     />
                   ))}
-                </ul>
+                </NftGrid>
               </div>
-              <div className="flex mx-auto">
-                {(farmerState === "staked" ||
-                  farmerState === "pendingCooldown") && (
-                  <>
-                    <button onClick={endStaking} className="btn btn-ghost">
-                      End Staking
-                    </button>
-                  </>
-                )}
-                {vaultNfts.length > 0 && farmerState === "unstaked" && (
-                  <button onClick={stakeGems}>Stake NFTs</button>
-                )}
-              </div>
+              <FarmInfo
+                onStakeClick={stakeGems}
+                onUnstakeClick={endStaking}
+                vaultNfts={vaultNfts}
+                farmerState={farmerState}
+                farmer={farmerAcc}
+              />
             </div>
           ) : (
             publicKey && (
