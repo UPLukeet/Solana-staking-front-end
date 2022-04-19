@@ -13,7 +13,12 @@ import { getNFTMetadataForMany, getNFTsByOwner, INFT } from "utils/web3/NFTget";
 import { useTransaction } from "utils/web3/sendTransactionConfirmed";
 import { FarmInfo } from "components/FarmInfo";
 import { NftGrid } from "components/NftGrid";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/solid";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/solid";
 import BapeImg from "../../assets/king-bape.png";
 
 export const HomeView: FC = ({}) => {
@@ -272,9 +277,9 @@ export const HomeView: FC = ({}) => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-3 h-full">
+    <div className="container mx-auto h-full p-5 sm:p-6 max-w-6xl">
       <div className={styles.container}>
-        <div className="navbar mb-2 shadow-lg bg-wood text-neutral-content rounded-box">
+        <div className="navbar mb-2 shadow-lg bg-wood text-neutral-content rounded-box p-2">
           <div className="flex-none">
             <button className="btn btn-square btn-ghost">
               <span className="text-4xl">
@@ -282,7 +287,7 @@ export const HomeView: FC = ({}) => {
               </span>
             </button>
           </div>
-          <div className="flex-1 px-2 mx-2 hidden">
+          <div className="flex-1 px-2 mx-2 hidden sm:block">
             <span className="text-lg font-bold">BabyApes</span>
           </div>
           <div className="flex-none ml-auto">
@@ -293,8 +298,8 @@ export const HomeView: FC = ({}) => {
         <div className="h-full mt-6">
           {farmerAcc ? (
             <div className="h-full">
-              <div className="flex flex-col w-full h-full justify-between">
-                <NftGrid>
+              <div className="flex flex-col p-3 w-full h-full justify-between sm:flex-row  sm:my-20">
+                <NftGrid heading="Un-staked">
                   {whiteListNfts?.map((nft) => (
                     <NftCard
                       onClick={(mint) => updateSelectedNfts(mint)}
@@ -304,7 +309,7 @@ export const HomeView: FC = ({}) => {
                     />
                   ))}
                 </NftGrid>
-                <div className="flex p-3 m-auto">
+                <div className="flex p-3 m-auto sm: sm:flex-col">
                   <button
                     disabled={
                       !whiteListNfts.find((nft) =>
@@ -314,7 +319,8 @@ export const HomeView: FC = ({}) => {
                     onClick={() => moveGems(true)}
                     className={`btn bg-neatral m-2`}
                   >
-                    <ChevronDownIcon className="text-white w-6 h-6" />
+                    <ChevronDownIcon className="w-6 h-6 sm:hidden" />
+                    <ChevronRightIcon className="w-6 h-6 hidden sm:block" />
                   </button>
 
                   <button
@@ -334,7 +340,8 @@ export const HomeView: FC = ({}) => {
                       "bg-wood"
                     }`}
                   >
-                    <ChevronUpIcon className="text- w-6 h-6" />
+                    <ChevronUpIcon className="w-6 h-6 sm:hidden" />
+                    <ChevronLeftIcon className="w-6 h-6 hidden sm:block" />
                   </button>
                 </div>
                 <NftGrid isStaked={farmerState === "staked"} heading="Staked">
