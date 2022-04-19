@@ -24,7 +24,7 @@ export const NftCard = ({
       }`}
     >
       <img src={externalMetadata?.image} className="h-100 w-100 flex-1" />
-      <p className="p-2">{externalMetadata?.name}</p>
+      <p className="p-2 text-white">{externalMetadata?.name}</p>
     </li>
   );
 };

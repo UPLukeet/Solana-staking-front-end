@@ -7,7 +7,7 @@ module.exports = {
   darkMode: "media", // or 'false' or 'class'
   theme: {
     fontFamily: {
-      // sans: ['Graphik', 'sans-serif'],
+      sans: ["DigitalDisco", "sans-serif"],
       // serif: ['Merriweather', 'serif'],
     },
     extend: {
@@ -28,7 +28,7 @@ module.exports = {
     styled: true,
     themes: [
       // first one will be the default theme
-      "dark",
+      // "dark",
       // uncomment to enable
       // "light (default)",
       // "dark",
@@ -51,7 +51,29 @@ module.exports = {
       // "black",
       // "luxury",
       // "dracula",
+      {
+        mytheme: {
+          primary: "#29AB87",
+
+          secondary: "#29AB87",
+
+          accent: "#dd40ab",
+
+          neutral: "#272934",
+
+          "base-100": "#293042",
+
+          info: "#429FF5",
+
+          success: "#18775E",
+
+          warning: "#E9B407",
+
+          error: "#FB4179",
+        },
+      },
     ],
+
     base: true,
     utils: true,
     logs: true,

@@ -4,7 +4,7 @@ import { HomeView } from "../views";
 
 const Home: NextPage = (props) => {
   return (
-    <div className="flex flex-col h-100">
+    <div className="flex flex-col h-full text">
       <Head>
         <title>Caw Caw!</title>
         <meta name="description" content="This site will fly high 🦤" />

@@ -14,6 +14,7 @@ import { useTransaction } from "utils/web3/sendTransactionConfirmed";
 import { FarmInfo } from "components/FarmInfo";
 import { NftGrid } from "components/NftGrid";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/solid";
+import BapeImg from "../../assets/king-bape.png";
 
 export const HomeView: FC = ({}) => {
   const { publicKey, sendTransaction, signTransaction } = useWallet();
@@ -273,17 +274,19 @@ export const HomeView: FC = ({}) => {
   return (
     <div className="container mx-auto max-w-6xl p-3 h-full">
       <div className={styles.container}>
-        <div className="navbar mb-2 shadow-lg bg-neutral text-neutral-content rounded-box">
+        <div className="navbar mb-2 shadow-lg bg-wood text-neutral-content rounded-box">
           <div className="flex-none">
             <button className="btn btn-square btn-ghost">
-              <span className="text-4xl">🦤</span>
+              <span className="text-4xl">
+                <img src={BapeImg.src} className="rounded-lg" />
+              </span>
             </button>
           </div>
           <div className="flex-1 px-2 mx-2 hidden">
-            <span className="text-lg font-bold">Caw Caw</span>
+            <span className="text-lg font-bold">BabyApes</span>
           </div>
           <div className="flex-none ml-auto">
-            <WalletMultiButton className="btn btn-ghost" />
+            <WalletMultiButton className="btn bg-wood" />
           </div>
         </div>
 
@@ -309,9 +312,9 @@ export const HomeView: FC = ({}) => {
                       )
                     }
                     onClick={() => moveGems(true)}
-                    className="btn btn-ghost m-2"
+                    className={`btn bg-neatral m-2`}
                   >
-                    <ChevronDownIcon className="text-black w-6 h-6" />
+                    <ChevronDownIcon className="text-white w-6 h-6" />
                   </button>
 
                   <button
@@ -323,9 +326,15 @@ export const HomeView: FC = ({}) => {
                       )
                     }
                     onClick={() => moveGems(false)}
-                    className="btn btn-ghost m-2"
+                    className={`btn m-2 ${
+                      vaultNfts.find((nft) =>
+                        selectedNfts.includes(nft.mint.toBase58())
+                      ) &&
+                      farmerState === "Unstaked" &&
+                      "bg-wood"
+                    }`}
                   >
-                    <ChevronUpIcon className="text-black w-6 h-6" />
+                    <ChevronUpIcon className="text- w-6 h-6" />
                   </button>
                 </div>
                 <NftGrid isStaked={farmerState === "staked"} heading="Staked">
@@ -350,9 +359,9 @@ export const HomeView: FC = ({}) => {
             </div>
           ) : (
             publicKey && (
-              <div>
-                <p>No account found</p>
-                <button onClick={initFarmer} className="btn btn-ghost">
+              <div className="flex flex-col bg-neutral rounded-lg p-4 m-auto text-center">
+                <p className="p-3">No account found</p>
+                <button onClick={initFarmer} className="btn btn-primary ">
                   Begin staking
                 </button>
               </div>
