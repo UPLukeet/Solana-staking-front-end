@@ -183,31 +183,33 @@ export const HomeView: FC = ({}) => {
           (whiteListedNft: INFT) => whiteListedNft.mint.toBase58() === nft
         );
         if (!selectedNft) return;
+        if (farmerState === "staked") {
+          await moveGemToStakedVault(selectedNft);
+        } else {
+          const creator = new PublicKey(
+            selectedNft?.onchainMetadata.data.creators[0].address
+          );
+          const programAccount = await connection.getTokenAccountsByOwner(
+            publicKey as PublicKey,
+            {
+              mint: selectedNft.mint,
+            }
+          );
+          const gemSource = programAccount.value[0].pubkey;
 
-        const creator = new PublicKey(
-          selectedNft?.onchainMetadata.data.creators[0].address
-        );
-        const programAccount = await connection.getTokenAccountsByOwner(
-          publicKey as PublicKey,
-          {
-            mint: selectedNft.mint,
-          }
-        );
-        const gemSource = programAccount.value[0].pubkey;
-
-        await gb.depositGemWallet(
-          bank,
-          vault,
-          new BN(1),
-          new PublicKey(nft),
-          gemSource,
-          creator
-        );
+          await gb.depositGemWallet(
+            bank,
+            vault,
+            new BN(1),
+            new PublicKey(nft),
+            gemSource,
+            creator
+          );
+        }
         newWhiteList = newWhiteList.filter(
           (nftToRemove) => nftToRemove.mint.toBase58() !== nft
         );
         newVault = [...newVault, selectedNft];
-
         setVaultNfts(newVault);
         setWhiteListNfts(newWhiteList);
         updateSelectedNfts(nft);
@@ -238,6 +240,30 @@ export const HomeView: FC = ({}) => {
     }
   };
 
+  const moveGemToStakedVault = async (selectedNft: INFT) => {
+    const creator = new PublicKey(
+      selectedNft?.onchainMetadata.data.creators[0].address
+    );
+    const programAccount = await connection.getTokenAccountsByOwner(
+      publicKey as PublicKey,
+      {
+        mint: selectedNft.mint,
+      }
+    );
+    const gemSource = programAccount.value[0].pubkey;
+    const tsx = await gf.addToStaked(
+      bank,
+      vault,
+      new PublicKey(farm),
+      selectedNft.mint,
+      gemSource,
+      creator
+    );
+    const result = await sendTransactionConfirmed(tsx, connection);
+
+    console.log("flash deposited ", result);
+  };
+
   const stakeGems = async () => {
     const tsx = await gf.stakeNfts(bank, vault, new PublicKey(farm));
     const result = await sendTransactionConfirmed(tsx, connection);
@@ -249,7 +275,13 @@ export const HomeView: FC = ({}) => {
   const endStaking = async () => {
     let newWhiteList = whiteListNfts;
     let newVault = vaultNfts;
-    const tsx = await gf.unstakeNfts(bank, vault, new PublicKey(farm));
+    const tsx = await gf.unstakeNfts(
+      bank,
+      vault,
+      new PublicKey(farm),
+      farmAcc.rewardA.rewardMint,
+      farmAcc.rewardB.rewardMint
+    );
     const result = await sendTransactionConfirmed(tsx, connection);
 
     console.log("unstaked ", result);
@@ -325,10 +357,8 @@ export const HomeView: FC = ({}) => {
 
                   <button
                     disabled={
-                      !(
-                        vaultNfts.find((nft) =>
-                          selectedNfts.includes(nft.mint.toBase58())
-                        ) && farmerState === "Unstaked"
+                      !vaultNfts.find((nft) =>
+                        selectedNfts.includes(nft.mint.toBase58())
                       )
                     }
                     onClick={() => moveGems(false)}
@@ -362,6 +392,7 @@ export const HomeView: FC = ({}) => {
                 vaultNfts={vaultNfts}
                 farmerState={farmerState}
                 farmer={farmerAcc}
+                farm={farmAcc}
               />
             </div>
           ) : (

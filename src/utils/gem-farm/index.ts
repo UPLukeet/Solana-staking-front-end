@@ -19,11 +19,14 @@ import {
   findGdrPDA,
   findFarmTreasuryPDA,
   isKp,
+  findVaultPDA,
+  findRewardsPotPDA,
 } from "@gemworks/gem-farm-ts";
 import { programs } from "@metaplex/js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const FARM_PUBLICKEY = process.env.NEXT_PUBLIC_FARM_PUBLICKEY as string;
+export const REWARD_TOKEN = process.env.NEXT_PUBLIC_REWARD_TOKEN as string;
 
 export async function initGemFarm(
   conn: Connection,
@@ -269,7 +272,13 @@ export class GemFarm extends GemFarmClient {
     return result;
   }
 
-  async unstakeNfts(bank: any, vault: PublicKey, farm: PublicKey) {
+  async unstakeNfts(
+    bank: any,
+    vault: PublicKey,
+    farm: PublicKey,
+    rewardAMint: PublicKey,
+    rewardBMint: PublicKey
+  ) {
     const trxInstructions = [];
 
     const [farmer, farmerBump] = await findFarmerPDA(
@@ -279,6 +288,17 @@ export class GemFarm extends GemFarmClient {
     const [farmAuth, farmAuthBump] = await findFarmAuthorityPDA(farm);
 
     const [farmTreasury, farmTreasuryBump] = await findFarmTreasuryPDA(farm);
+
+    const [potA, potABump] = await findRewardsPotPDA(farm, rewardAMint);
+    const [potB, potBBump] = await findRewardsPotPDA(farm, rewardBMint);
+    const rewardADestination = await this.findATA(
+      rewardAMint,
+      this.wallet.publicKey
+    );
+    const rewardBDestination = await this.findATA(
+      rewardBMint,
+      this.wallet.publicKey
+    );
 
     const endStakingInst = this.farmProgram.instruction.unstake(
       farmAuthBump,
@@ -300,8 +320,35 @@ export class GemFarm extends GemFarmClient {
         signers: [this.wallet.publicKey] as any,
       }
     );
+
+    const rewardsInst = this.farmProgram.instruction.claim(
+      farmAuthBump,
+      farmerBump,
+      potABump,
+      potBBump,
+      {
+        accounts: {
+          farm,
+          farmAuthority: farmAuth,
+          farmer,
+          identity: this.wallet.publicKey,
+          rewardAPot: potA,
+          rewardAMint,
+          rewardADestination,
+          rewardBPot: potB,
+          rewardBMint,
+          rewardBDestination,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: web3.SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers: [this.wallet.publicKey] as any[],
+      }
+    );
     trxInstructions.push(endStakingInst);
     trxInstructions.push(endStakingInst);
+    trxInstructions.push(rewardsInst);
 
     return new Transaction().add(...trxInstructions);
   }
@@ -332,6 +379,82 @@ export class GemFarm extends GemFarmClient {
       }
     );
     trxInstructions.push(stakeInst);
+
+    return new Transaction().add(...trxInstructions);
+  }
+
+  async addToStaked(
+    bank: PublicKey,
+    vault: PublicKey,
+    farm: PublicKey,
+    gemMint: PublicKey,
+    gemSource: PublicKey,
+    creator: PublicKey
+  ) {
+    const [farmer, farmerBump] = await findFarmerPDA(
+      farm,
+      this.wallet.publicKey
+    );
+
+    const [farmAuth, farmAuthBump] = await findFarmAuthorityPDA(farm);
+    const [gemBox, gemBoxBump] = await findGemBoxPDA(vault, gemMint);
+    const [GDR, GDRBump] = await findGdrPDA(vault, gemMint);
+    const [vaultAuth, vaultAuthBump] = await findVaultAuthorityPDA(vault);
+    const [gemRarity, gemRarityBump] = await findRarityPDA(bank, gemMint);
+
+    const [mintProof, bump] = await findWhitelistProofPDA(bank, gemMint);
+    const [creatorProof, bump2] = await findWhitelistProofPDA(bank, creator);
+    const metadata = await programs.metadata.Metadata.getPDA(gemMint);
+    const trxInstructions = [];
+    const remainingAccounts = [];
+    if (mintProof)
+      remainingAccounts.push({
+        pubkey: mintProof,
+        isWritable: false,
+        isSigner: false,
+      });
+    if (metadata)
+      remainingAccounts.push({
+        pubkey: metadata,
+        isWritable: false,
+        isSigner: false,
+      });
+    if (creatorProof)
+      remainingAccounts.push({
+        pubkey: creatorProof,
+        isWritable: false,
+        isSigner: false,
+      });
+    const flashDepositIx = this.farmProgram.instruction.flashDeposit(
+      farmerBump,
+      vaultAuthBump,
+      gemRarityBump,
+      new BN(1),
+      {
+        accounts: {
+          farm,
+          farmAuthority: farmAuth,
+          farmer,
+          identity: this.wallet.publicKey,
+          bank: bank,
+          vault,
+          vaultAuthority: vaultAuth,
+          gemBox,
+          gemDepositReceipt: GDR,
+          gemSource,
+          gemMint,
+          gemRarity,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: web3.SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          gemBank: this.bankProgram.programId,
+        },
+        remainingAccounts,
+      }
+    );
+    const extraComputeIx = this.createExtraComputeIx(256000);
+    trxInstructions.push(extraComputeIx);
+    trxInstructions.push(flashDepositIx);
 
     return new Transaction().add(...trxInstructions);
   }
