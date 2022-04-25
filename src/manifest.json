@@ -1,10 +1,10 @@
 {
-  "name": "Caw Caw",
-  "short_name": "Caw Caw",
+  "name": "BabyApes",
+  "short_name": "BabyApes",
   "display": "standalone",
   "start_url": "./",
-  "theme_color": "#002140",
-  "background_color": "#001529",
+  "theme_color": "#29AB87",
+  "background_color": "#29AB87",
   "icons": [
     {
       "src": "icons/icon-192x192.png",
