@@ -39,7 +39,7 @@ export const FarmInfo = ({
     setTimeTillUnlock(
       parseInt(farmer.minStakingEndsTs) - new Date().getTime() / 1000
     );
-    if (!timerStarted && timeTillUnlock && timeTillUnlock > 0) {
+    if (!timerStarted) {
       setInterval(() => setTimeTillUnlock((prev) => prev && prev - 1), 1000);
       timerStarted = true;
     }

@@ -40,7 +40,7 @@ export const HomeView: FC = ({}) => {
   const farm = FARM_PUBLICKEY;
 
   const [vault, setVault] = useState();
-  const [vaultAcc, setVaultAcc] = useState();
+  const [vaultAcc, setVaultAcc] = useState<any>();
   const [bank, setBank] = useState();
   const [isBankLocked, setIsBankLocked] = useState();
 
@@ -238,6 +238,7 @@ export const HomeView: FC = ({}) => {
         updateSelectedNfts(nft);
       }
     }
+    await updateVaultState();
   };
 
   const moveGemToStakedVault = async (selectedNft: INFT) => {
@@ -265,7 +266,13 @@ export const HomeView: FC = ({}) => {
   };
 
   const stakeGems = async () => {
-    const tsx = await gf.stakeNfts(bank, vault, new PublicKey(farm));
+    const gemsInVault = parseInt(vaultAcc?.gemCount);
+    const tsx = await gf.stakeNfts(
+      bank,
+      vault,
+      new PublicKey(farm),
+      gemsInVault
+    );
     const result = await sendTransactionConfirmed(tsx, connection);
 
     console.log("deposited ", result);

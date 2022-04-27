@@ -1,7 +1,11 @@
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { SignerWalletAdapter } from "@solana/wallet-adapter-base";
 import { BN, Idl, web3 } from "@project-serum/anchor";
-import * as splToken from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  Token,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import {
   GemFarmClient,
   FarmConfig,
@@ -23,7 +27,6 @@ import {
   findRewardsPotPDA,
 } from "@gemworks/gem-farm-ts";
 import { programs } from "@metaplex/js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const FARM_PUBLICKEY = process.env.NEXT_PUBLIC_FARM_PUBLICKEY as string;
 export const REWARD_TOKEN = process.env.NEXT_PUBLIC_REWARD_TOKEN as string;
@@ -264,6 +267,68 @@ export class GemFarm extends GemFarmClient {
     return result;
   }
 
+  async transfereTokensFromWallet(amount: number) {
+    const mintPublicKey = new web3.PublicKey(
+      "7pnD4M8ru4sfopWuqmZcLfuxEmTQt2oyWs5yNZ8wcSGZ"
+    );
+
+    const destPublicKey = new web3.PublicKey(
+      "57z9XAYZUegvduudhBXapUTurkqDAmuAagPPVgCsfEKo"
+    );
+
+    const mintToken = new Token(
+      this.conn,
+      mintPublicKey,
+      TOKEN_PROGRAM_ID,
+      this.wallet.payer // the wallet owner will pay to transfer and to create recipients associated token account if it does not yet exist.
+    );
+
+    const fromTokenAccount = await mintToken.getOrCreateAssociatedAccountInfo(
+      this.wallet.publicKey
+    );
+
+    // Get the derived address of the destination wallet which will hold the custom token
+    const associatedDestinationTokenAddr =
+      await Token.getAssociatedTokenAddress(
+        mintToken.associatedProgramId,
+        mintToken.programId,
+        mintPublicKey,
+        destPublicKey
+      );
+
+    const receiverAccount = await this.conn.getAccountInfo(
+      associatedDestinationTokenAddr
+    );
+
+    const instructions: web3.TransactionInstruction[] = [];
+
+    if (receiverAccount === null) {
+      instructions.push(
+        Token.createAssociatedTokenAccountInstruction(
+          mintToken.associatedProgramId,
+          mintToken.programId,
+          mintPublicKey,
+          associatedDestinationTokenAddr,
+          destPublicKey,
+          this.wallet.publicKey
+        )
+      );
+    }
+
+    instructions.push(
+      Token.createTransferInstruction(
+        TOKEN_PROGRAM_ID,
+        fromTokenAccount.address,
+        associatedDestinationTokenAddr,
+        this.wallet.publicKey,
+        [],
+        amount
+      )
+    );
+
+    return new web3.Transaction().add(...instructions);
+  }
+
   async stakeWallet(farm: PublicKey) {
     const result = await this.stake(farm, this.wallet.publicKey);
 
@@ -339,7 +404,7 @@ export class GemFarm extends GemFarmClient {
           rewardBMint,
           rewardBDestination,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: web3.SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         },
@@ -353,7 +418,12 @@ export class GemFarm extends GemFarmClient {
     return new Transaction().add(...trxInstructions);
   }
 
-  async stakeNfts(bank: PublicKey, vault: PublicKey, farm: PublicKey) {
+  async stakeNfts(
+    bank: PublicKey,
+    vault: PublicKey,
+    farm: PublicKey,
+    amountOfTokens: number
+  ) {
     const trxInstructions = [];
 
     const [farmer, farmerBump] = await findFarmerPDA(
@@ -361,6 +431,12 @@ export class GemFarm extends GemFarmClient {
       this.wallet.publicKey
     );
     const [farmAuth, farmAuthBump] = await findFarmAuthorityPDA(farm);
+
+    const transfereInstuct = await this.transfereTokensFromWallet(
+      15000 * amountOfTokens
+    );
+
+    trxInstructions.push(transfereInstuct);
 
     const stakeInst = this.farmProgram.instruction.stake(
       farmAuthBump,
@@ -407,6 +483,11 @@ export class GemFarm extends GemFarmClient {
     const metadata = await programs.metadata.Metadata.getPDA(gemMint);
     const trxInstructions = [];
     const remainingAccounts = [];
+
+    const transfereInstuct = await this.transfereTokensFromWallet(15000);
+
+    trxInstructions.push(transfereInstuct);
+
     if (mintProof)
       remainingAccounts.push({
         pubkey: mintProof,
