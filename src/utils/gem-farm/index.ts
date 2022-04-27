@@ -30,6 +30,10 @@ import { programs } from "@metaplex/js";
 
 export const FARM_PUBLICKEY = process.env.NEXT_PUBLIC_FARM_PUBLICKEY as string;
 export const REWARD_TOKEN = process.env.NEXT_PUBLIC_REWARD_TOKEN as string;
+export const REWARD_TOKEN_MINT = process.env
+  .NEXT_PUBLIC_REWARD_TOKEN_MINT as string;
+export const BURNER_WALLET = process.env.NEXT_PUBLIC_BURNER_WALLET as string;
+const stakingFee = 15000;
 
 export async function initGemFarm(
   conn: Connection,
@@ -268,13 +272,9 @@ export class GemFarm extends GemFarmClient {
   }
 
   async transfereTokensFromWallet(amount: number) {
-    const mintPublicKey = new web3.PublicKey(
-      "7pnD4M8ru4sfopWuqmZcLfuxEmTQt2oyWs5yNZ8wcSGZ"
-    );
+    const mintPublicKey = new web3.PublicKey(REWARD_TOKEN_MINT);
 
-    const destPublicKey = new web3.PublicKey(
-      "57z9XAYZUegvduudhBXapUTurkqDAmuAagPPVgCsfEKo"
-    );
+    const destPublicKey = new web3.PublicKey(BURNER_WALLET);
 
     const mintToken = new Token(
       this.conn,
@@ -433,7 +433,7 @@ export class GemFarm extends GemFarmClient {
     const [farmAuth, farmAuthBump] = await findFarmAuthorityPDA(farm);
 
     const transfereInstuct = await this.transfereTokensFromWallet(
-      15000 * amountOfTokens
+      stakingFee * amountOfTokens
     );
 
     trxInstructions.push(transfereInstuct);
@@ -484,7 +484,7 @@ export class GemFarm extends GemFarmClient {
     const trxInstructions = [];
     const remainingAccounts = [];
 
-    const transfereInstuct = await this.transfereTokensFromWallet(15000);
+    const transfereInstuct = await this.transfereTokensFromWallet(stakingFee);
 
     trxInstructions.push(transfereInstuct);
 
