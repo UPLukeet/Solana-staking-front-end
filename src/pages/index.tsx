@@ -6,7 +6,7 @@ const Home: NextPage = (props) => {
   return (
     <div className="flex flex-col h-full text">
       <Head>
-        <title>Caw Caw!</title>
+        <title>BabyApes</title>
         <meta name="description" content="This site will fly high 🦤" />
       </Head>
       <HomeView />
